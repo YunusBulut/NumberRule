@@ -6,12 +6,14 @@ Created on 13.12.16
 import os
 from numberTron.datastructures.graph import Graph
 from numberTron.utils.jasonUtils import JsonUtils
+import importlib
 
 class NtronExperiment:
     
     # Feature thresholds
     MINTZ_FEATURE_THRESHOLD = None
     KEYWORD_FEATURE_THRESHOLD = None
+    FEATURE_GENERATOR_MODULE_PATH = ""
     
     
     def __init__(self, propertiesFile):
@@ -43,7 +45,7 @@ class NtronExperiment:
 
         properties = JsonUtils.getJsonMap(propertiesFile)
 
-        rbased = new RuleBasedDriver(True)
+        rbased = RuleBasedDriver(True)
         corpusPath = JsonUtils.getStringProperty(properties, "corpusPath")
 
         # Create the entity name to id map
@@ -77,21 +79,20 @@ class NtronExperiment:
         numbersFeatureGeneratorClass = JsonUtils.getStringProperty(properties, "numbersFg")
 
         if keywordFeatureGeneratorClass != None and (not len(keywordFeatureGeneratorClass) == 0):
-            @ TODO
-            self.keywordsFg = ClassLoader.getSystemClassLoader().loadClass(keywordFeatureGeneratorClass).newInstance()
+            self.keywordsFg = getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), keywordFeatureGeneratorClass)()
         
         if mintzFeatureGeneratorClass != None and (not len(mintzFeatureGeneratorClass) == 0):
-            self.mintzKeywordsFg = ClassLoader.getSystemClassLoader().loadClass(mintzFeatureGeneratorClass).newInstance()
+            self.mintzKeywordsFg = getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), mintzFeatureGeneratorClass)()
 
     
-        if (numbersFeatureGeneratorClass != None and (not len(numbersFeatureGeneratorClass == 0):
-            self.numberFg = ClassLoader.getSystemClassLoader().loadClass(numbersFeatureGeneratorClass).newInstance()
+        if numbersFeatureGeneratorClass != None and (not len(numbersFeatureGeneratorClass) == 0):
+            self.numberFg = getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), numbersFeatureGeneratorClass)()
 
         sigClasses = JsonUtils.getListProperty(properties, "sigs")
         sigs = []
         
         for sigClass in sigClasses:
-            sigs.append(ClassLoader.getSystemClassLoader().loadClass(sigClass).getMethod("getInstance").invoke(null))
+            sigs.append(str(getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), sigClass)()))
 
         dsFileNames = JsonUtils.getListProperty(properties, "dsFiles")
         DSFiles = []
@@ -112,23 +113,23 @@ class NtronExperiment:
 
         altCisString = JsonUtils.getStringProperty(properties, "cis")
         if altCisString != None:
-            cis = ClassLoader.getSystemClassLoader().loadClass(altCisString).newInstance()
+            cis = getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), altCisString)()
 
         # CorpusInformationSpecification
         tokenInformationClassNames = JsonUtils.getListProperty(properties, "ti")
         tokenInfoList = []
         for tokenInformationClassName in tokenInformationClassNames:
-            tokenInfoList.append(ClassLoader.getSystemClassLoader().loadClass(tokenInformationClassName).newInstance())
+            tokenInfoList.append(getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), tokenInformationClassName)())
 
         sentInformationClassNames = JsonUtils.getListProperty(properties, "si")
         sentInfoList = []
         for sentInformationClassName in sentInformationClassNames:
-            sentInfoList.append(ClassLoader.getSystemClassLoader().loadClass(sentInformationClassName).newInstance())
+            sentInfoList.append(getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), sentInformationClassName)())
 
         docInformationClassNames = JsonUtils.getListProperty(properties, "di")
         docInfoList = []
         for docInformationClassName in docInformationClassNames:
-            docInfoList.append(ClassLoader.getSystemClassLoader().loadClass(docInformationClassName).newInstance())
+            docInfoList.append(getattr(importlib.import_module(FEATURE_GENERATOR_MODULE_PATH), docInformationClassName)())
 
         ccis = cis
         ccis.addDocumentInformation(docInfoList)
@@ -204,10 +205,8 @@ class NtronExperiment:
                 
             bw.close()
         
-            LperceptTrain.train(modelFile.getAbsoluteFile().toString(), new Random(
-                    1), this.numIterations, this.regularizer, this.finalAvg,
-                    this.ignoreConfusion, ntronModelDirs.get(0)
-                            + File.separatorChar + "mapping")
+            LperceptTrain.train(modelFile.getAbsoluteFile().toString(), Random(1), self.numIterations, self.regularizer, self.finalAvg,
+                    self.ignoreConfusion, ntronModelDirs[0] + os.path.sep + "mapping")
 
     def filesExist(self, dsFiles):
         for s in dsFiles:
@@ -226,7 +225,7 @@ class NtronExperiment:
      * @param modelFile
      * @param outFile
     '''
-   @staticmethod
+    @staticmethod
     def writeFeatureWeights(mapping, parametersFile, modelFile, outFile):
         
         bw = open(outFile, 'w')
